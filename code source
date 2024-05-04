@@ -1,0 +1,429 @@
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+
+typedef struct {
+    int jour;
+    int mois;
+    int annee;
+} Date;
+
+typedef struct {
+    int id;
+    char nom[50];
+    char description[100];
+    char nomUtilisateur[50];
+    float prixUnitaire;
+    int quantiteStock;
+    int seuilAlerteStock;
+    Date dateDerniereEntree;
+    Date dateDerniereSortie;
+} Produit;
+
+void ouvrir_fichier(FILE **fichier, const char *mode) {
+    *fichier = fopen("PRODUITS.txt", mode);
+    if (*fichier == NULL) {
+        printf("Le fichier PRODUITS.txt n'existe pas. Création d'un nouveau fichier...\n");
+        *fichier = fopen("PRODUITS.txt", "w");
+        if (*fichier == NULL) {
+            perror("Erreur lors de la création du fichier");
+            exit(EXIT_FAILURE);
+        }
+    }
+}
+
+void LoadProductFromFile(FILE *fichier, Produit *T, int *n, int *lastId) {
+    rewind(fichier);
+    *n = 0;
+    *lastId = 0;
+    while (fscanf(fichier, "%d;%49[^;];%99[^;];%49[^;];%f;%d;%d;%d/%d/%d;%d/%d/%d\n",
+                  &T[*n].id, T[*n].nom, T[*n].description, T[*n].nomUtilisateur, &T[*n].prixUnitaire,
+                  &T[*n].quantiteStock, &T[*n].seuilAlerteStock,
+                  &T[*n].dateDerniereEntree.jour, &T[*n].dateDerniereEntree.mois, &T[*n].dateDerniereEntree.annee,
+                  &T[*n].dateDerniereSortie.jour, &T[*n].dateDerniereSortie.mois, &T[*n].dateDerniereSortie.annee) == 13) {
+        (*n)++;
+        if (T[*n - 1].id >= *lastId) {
+            *lastId = T[*n - 1].id + 1; 
+        }
+    }
+}
+
+void SaveProductToFile(FILE *fichier, Produit *T, int n) {
+	int i;
+    rewind(fichier);
+    for (i = 0; i < n; i++) {
+        fprintf(fichier, "%d;%s;%s;%s;%.2f;%d;%d;%02d/%02d/%04d;%02d/%02d/%04d\n", T[i].id, T[i].nom, T[i].description, T[i].nomUtilisateur, T[i].prixUnitaire, T[i].quantiteStock, T[i].seuilAlerteStock, T[i].dateDerniereEntree.jour, T[i].dateDerniereEntree.mois, T[i].dateDerniereEntree.annee, T[i].dateDerniereSortie.jour, T[i].dateDerniereSortie.mois, T[i].dateDerniereSortie.annee);
+    }
+}
+
+void ajouter_produit(FILE *fichier, int *lastId, int *n, Produit *P, char *nomUtilisateur) {
+    P->id = (*lastId)++;
+    strcpy(P->nomUtilisateur, nomUtilisateur);
+
+    printf("Nom : ");
+    fflush(stdin);
+    fgets(P->nom, sizeof(P->nom), stdin);
+
+    printf("Description : ");
+    fflush(stdin);
+    fgets(P->description, sizeof(P->description), stdin);
+
+    printf("Prix Unitaire : ");
+    scanf("%f", &P->prixUnitaire);
+
+    printf("Quantite en Stock : ");
+    scanf("%d", &P->quantiteStock);
+
+    printf("Seuil d'alerte de Stock : ");
+    scanf("%d", &P->seuilAlerteStock);
+    fflush(stdin);
+    printf("Date de Derniere Entree en Stock(j/m/a) : ");
+    scanf("%d/%d/%d", &P->dateDerniereEntree.jour, &P->dateDerniereEntree.mois, &P->dateDerniereEntree.annee);
+    fflush(stdin);
+    printf("Date de Derniere Sortie de Stock : ");
+    scanf("%d/%d/%d", &P->dateDerniereSortie.jour, &P->dateDerniereSortie.mois, &P->dateDerniereSortie.annee);
+    fseek(fichier, 0, SEEK_END);
+    fprintf(fichier, "%d;%s;%s;%s;%.2f;%d;%d;%02d/%02d/%04d;%02d/%02d/%04d\n", P->id, P->nom, P->description, P->nomUtilisateur, P->prixUnitaire, P->quantiteStock, P->seuilAlerteStock, P->dateDerniereEntree.jour, P->dateDerniereEntree.mois, P->dateDerniereEntree.annee, P->dateDerniereSortie.jour, P->dateDerniereSortie.mois, P->dateDerniereSortie.annee);
+
+    printf("Le produit a ete ajoute avec succes.\n");
+}
+
+void modifier_produit(FILE *fichier, Produit *produits, int nb_produits) {
+	int i;
+    int id;
+    printf("Entrez l'ID du produit que vous souhaitez modifier : ");
+    scanf("%d", &id);
+
+    for (i = 0; i < nb_produits; i++) {
+        if (produits[i].id == id) {
+            int choix;
+            do {
+                printf("Voulez-vous modifier l'ID du produit? (oui: 1 non: 0) ");
+                scanf("%d", &choix);
+            } while (choix < 0 || choix > 1);
+            if (choix == 1) {
+                printf("Veuillez saisir le nouvel ID du produit: ");
+                scanf("%d", &produits[i].id);
+            }
+            do {
+                printf("Voulez-vous modifier le nom du produit? (oui: 1 non: 0) ");
+                scanf("%d", &choix);
+            } while (choix < 0 || choix > 1);
+            if (choix == 1) {
+                printf("Veuillez saisir le nouveau nom du produit: ");
+                scanf("%s", produits[i].nom);
+            }
+
+            do {
+                printf("Voulez-vous modifier la description du produit ? (oui: 1 non: 0) ");
+                scanf("%d", &choix);
+            } while (choix < 0 || choix > 1);
+            if (choix == 1) {
+                printf("Veuillez saisir la nouvelle description du produit: ");
+                scanf("%s", produits[i].description);
+            }
+
+            do {
+                printf("Voulez-vous modifier le nom de l'utilisateur ? (oui: 1 non: 0) ");
+                scanf("%d", &choix);
+            } while (choix < 0 || choix > 1);
+            if (choix == 1) {
+                printf("Veuillez saisir le nouveau nom de l'utilisateur: ");
+                scanf("%s", produits[i].nomUtilisateur);
+            }
+
+            do {
+                printf("Voulez-vous modifier le prix unitaire du produit ? (oui: 1 non: 0) ");
+                scanf("%d", &choix);
+            } while (choix < 0 || choix > 1);
+            if (choix == 1) {
+                printf("Veuillez saisir le nouveau prix unitaire du produit: ");
+                scanf("%f", &produits[i].prixUnitaire);
+            }
+
+            do {
+                printf("Voulez-vous modifier la quantite en stock du produit? (oui: 1 non: 0) ");
+                scanf("%d", &choix);
+            } while (choix < 0 || choix > 1);
+            if (choix == 1) {
+                printf("Veuillez saisir la nouvelle quantite en stock du produit: ");
+                scanf("%d", &produits[i].quantiteStock);
+            }
+
+            do {
+                printf("Voulez-vous modifier le seuil d'alerte de stock ? (oui: 1 non: 0) ");
+                scanf("%d", &choix);
+            } while (choix < 0 || choix > 1);
+            if (choix == 1) {
+                printf("Veuillez saisir le nouveau seuil d'alerte de stock du produit: ");
+                scanf("%d", &produits[i].seuilAlerteStock);
+            }
+
+            do {
+                printf("Voulez-vous modifier la date de derniere entree en stock du produit ? (oui: 1 non: 0) ");
+                scanf("%d", &choix);
+            } while (choix < 0 || choix > 1);
+            if (choix == 1) {
+                printf("Veuillez saisir la nouvelle date de derniere entree en stock du produit (j/m/a): ");
+                scanf("%d/%d/%d", &produits[i].dateDerniereEntree.jour, &produits[i].dateDerniereEntree.mois, &produits[i].dateDerniereEntree.annee);
+            }
+
+            do {
+                printf("Voulez-vous modifier la date de derniere sortie en stock du produit ? (oui: 1 non: 0) ");
+                scanf("%d", &choix);
+            } while (choix < 0 || choix > 1);
+            if (choix == 1) {
+                printf("Veuillez saisir la date de derniere sortie en stock du produit (j/m/a): ");
+                scanf("%d/%d/%d", &produits[i].dateDerniereSortie.jour, &produits[i].dateDerniereSortie.mois, &produits[i].dateDerniereSortie.annee);
+            }
+
+            printf("Le produit a ete modifie avec succes.\n");
+            SaveProductToFile(fichier, produits, nb_produits);
+            return;
+        }
+    }
+    printf("Produit non trouve.\n");
+}
+void supprimer_produit(FILE *fichier, Produit *produits, int *nb_produits) {
+    int id;
+    printf("Entrez l'ID du produit que vous souhaitez supprimer : ");
+    scanf("%d", &id);
+
+    int i;
+    for (i = 0; i < *nb_produits; i++) {
+        if (produits[i].id == id) {
+            int j;
+            for (j = i; j < *nb_produits - 1; j++) {
+                produits[j] = produits[j + 1];
+            }
+            (*nb_produits)--;
+            FILE *tempFile = fopen("temp.txt", "w"); 
+            if (tempFile == NULL) {
+                perror("Erreur lors de la creation du fichier temporaire");
+                return;
+            }
+        
+            SaveProductToFile(tempFile, produits, *nb_produits); 
+            fclose(tempFile);
+            fclose(fichier);
+        
+            if (remove("PRODUITS.txt") != 0) { 
+                perror("Erreur lors de la suppression du fichier produits.csv");
+                return;
+            }
+        
+            if (rename("temp.txt", "PRODUITS.txt") != 0) { 
+                perror("Erreur lors du renommage du fichier temporaire");
+                return;
+            }
+            printf("Le produit a ete supprime avec succes.\n");
+            return;
+        }
+    }
+    printf("Produit non trouve.\n");
+}
+void afficher_produits(FILE *fichier) {
+    rewind(fichier); 
+    Produit produit; 
+    printf("Voici la liste des produits :\n");
+    while (fscanf(fichier, "%d;%49[^;];%99[^;];%49[^;];%f;%d;%d;%d/%d/%d;%d/%d/%d\n",
+                  &produit.id, produit.nom, produit.description, produit.nomUtilisateur, &produit.prixUnitaire,
+                  &produit.quantiteStock, &produit.seuilAlerteStock,
+                  &produit.dateDerniereEntree.jour, &produit.dateDerniereEntree.mois, &produit.dateDerniereEntree.annee,
+                  &produit.dateDerniereSortie.jour, &produit.dateDerniereSortie.mois, &produit.dateDerniereSortie.annee) == 13) {
+        printf("ID : %d\n", produit.id);
+        printf("Nom : %s\n", produit.nom);
+        printf("Description : %s\n", produit.description);
+        printf("Nom Utilisateur : %s\n", produit.nomUtilisateur);
+        printf("Prix Unitaire : %.2f\n", produit.prixUnitaire);
+        printf("Quantite en Stock : %d\n", produit.quantiteStock);
+        printf("Seuil d'alerte de Stock : %d\n", produit.seuilAlerteStock);
+        printf("Date de Derniere Entree en Stock : %02d/%02d/%04d\n", produit.dateDerniereEntree.jour, produit.dateDerniereEntree.mois, produit.dateDerniereEntree.annee);
+        printf("Date de Derniere Sortie de Stock : %02d/%02d/%04d\n\n", produit.dateDerniereSortie.jour, produit.dateDerniereSortie.mois, produit.dateDerniereSortie.annee);
+    }
+}
+void rechercher_produit_par_utilisateur(FILE *fichier, const char *nomUtilisateur) {
+    rewind(fichier); 
+    Produit produit; 
+    int trouve = 0; 
+    while (fscanf(fichier, "%d;%49[^;];%99[^;];%49[^;];%f;%d;%d;%d/%d/%d;%d/%d/%d\n",
+                  &produit.id, produit.nom, produit.description, produit.nomUtilisateur, &produit.prixUnitaire,
+                  &produit.quantiteStock, &produit.seuilAlerteStock,
+                  &produit.dateDerniereEntree.jour, &produit.dateDerniereEntree.mois, &produit.dateDerniereEntree.annee,
+                  &produit.dateDerniereSortie.jour, &produit.dateDerniereSortie.mois, &produit.dateDerniereSortie.annee) == 13) {
+        if (strcmp(produit.nomUtilisateur, nomUtilisateur) == 0) {
+            if (!trouve) {
+                printf("Voici les produits de l'utilisateur %s :\n", nomUtilisateur);
+                trouve = 1; 
+            }
+            printf("ID : %d\n", produit.id);
+            printf("Nom : %s\n", produit.nom);
+            printf("Description : %s\n", produit.description);
+            printf("Prix Unitaire : %.2f\n", produit.prixUnitaire);
+            printf("Quantite en Stock : %d\n", produit.quantiteStock);
+            printf("Seuil d'alerte de Stock : %d\n", produit.seuilAlerteStock);
+            printf("Date de Derniere Entree en Stock : %02d/%02d/%04d\n", produit.dateDerniereEntree.jour, produit.dateDerniereEntree.mois, produit.dateDerniereEntree.annee);
+            printf("Date de Derniere Sortie de Stock : %02d/%02d/%04d\n\n", produit.dateDerniereSortie.jour, produit.dateDerniereSortie.mois, produit.dateDerniereSortie.annee);
+        }
+    }
+
+    if (!trouve) {
+        printf("Aucun produit trouve pour l'utilisateur %s.\n", nomUtilisateur);
+    }
+}
+void rechercher_produit_par_nom(FILE *fichier, const char *nomProduit) {
+    rewind(fichier); 
+    Produit produit; 
+    int trouve = 0; 
+    while (fscanf(fichier, "%d;%49[^;];%99[^;];%49[^;];%f;%d;%d;%d/%d/%d;%d/%d/%d\n",
+                  &produit.id, produit.nom, produit.description, produit.nomUtilisateur, &produit.prixUnitaire,
+                  &produit.quantiteStock, &produit.seuilAlerteStock,
+                  &produit.dateDerniereEntree.jour, &produit.dateDerniereEntree.mois, &produit.dateDerniereEntree.annee,
+                  &produit.dateDerniereSortie.jour, &produit.dateDerniereSortie.mois, &produit.dateDerniereSortie.annee) == 13) {
+        if (strcmp(produit.nom, nomProduit) == 0) {
+            if (!trouve) {
+                printf("Voici les produits avec le nom '%s' :\n", nomProduit);
+                trouve = 1; 
+            }
+            printf("ID : %d\n", produit.id);
+            printf("Nom : %s\n", produit.nom);
+            printf("Description : %s\n", produit.description);
+            printf("Nom Utilisateur : %s\n", produit.nomUtilisateur);
+            printf("Prix Unitaire : %.2f\n", produit.prixUnitaire);
+            printf("Quantite en Stock : %d\n", produit.quantiteStock);
+            printf("Seuil d'alerte de Stock : %d\n", produit.seuilAlerteStock);
+            printf("Date de Derniere Entree en Stock : %02d/%02d/%04d\n", produit.dateDerniereEntree.jour, produit.dateDerniereEntree.mois, produit.dateDerniereEntree.annee);
+            printf("Date de Derniere Sortie de Stock : %02d/%02d/%04d\n\n", produit.dateDerniereSortie.jour, produit.dateDerniereSortie.mois, produit.dateDerniereSortie.annee);
+        }
+    }
+
+    if (!trouve) {
+        printf("Aucun produit trouve avec le nom '%s'.\n", nomProduit);
+    }
+}
+void trier_produits_par_nom(FILE *fichier, Produit *produits, int *nb_produits, int *lastId) {
+    int i, j;
+    Produit temp;
+    LoadProductFromFile(fichier, produits, nb_produits, lastId);
+    for (i = 0; i < *nb_produits - 1; i++) {
+        for (j = 0; j < *nb_produits - i - 1; j++) {
+            if (strcmp(produits[j].nom, produits[j + 1].nom) > 0) {
+                temp = produits[j];
+                produits[j] = produits[j + 1];
+                produits[j + 1] = temp;
+            }
+        }
+    }
+    SaveProductToFile(fichier, produits, *nb_produits);
+}
+void trier_produits_par_prix_unitaire(FILE *fichier, Produit *produits, int *nb_produits, int *lastId) {
+    int i, j;
+    Produit temp;
+    LoadProductFromFile(fichier, produits, nb_produits, lastId);
+    for (i = 0; i < *nb_produits - 1; i++) {
+        for (j = 0; j < *nb_produits - i - 1; j++) {
+            if (produits[j].prixUnitaire > produits[j + 1].prixUnitaire) {
+                temp = produits[j];
+                produits[j] = produits[j + 1];
+                produits[j + 1] = temp;
+            }
+        }
+    }
+    SaveProductToFile(fichier, produits, *nb_produits);
+}
+
+int main() {
+    char nomUtilisateur[50];
+    char nomProduitRecherche[50];
+    int Id;
+    printf("Entrez votre nom d'utilisateur : ");
+    scanf("%s", nomUtilisateur);
+
+    if (strcmp(nomUtilisateur, "CHENNANI") == 0 || strcmp(nomUtilisateur, "NAZIH") == 0) {
+        FILE *fichier;
+        ouvrir_fichier(&fichier, "r+"); 
+        Produit T[100];
+        int n, lastId;
+        LoadProductFromFile(fichier, T, &n, &lastId);
+        int choix,choix2,choix3;
+        do {
+            printf("Que voulez-vous faire ?\n");
+            printf("1. Ajouter un produit\n");
+            printf("2. Modifier un produit\n");
+            printf("3. Supprimer un produit\n");
+            printf("4. Afficher la liste des produits\n");
+            printf("5. Rechercher un produit\n");
+            printf("6. Trier les produits\n");
+            printf("7. Quitter\n");
+            printf("Votre choix : ");
+            scanf("%d", &choix);
+
+            switch (choix) {
+                case 1:
+                    ajouter_produit(fichier, &lastId, &n, &T[n], nomUtilisateur);
+                    break;
+                case 2:
+                    modifier_produit(fichier, T, n);
+                    break;
+                case 3:
+                   supprimer_produit(fichier, T, &n);
+                    break;
+                case 4:
+                   afficher_produits(fichier);
+                   break;
+                case 5:
+                   printf("1. Rechercher le produit par le nom d'utilsateur\n");
+                   printf("2. Rechercher le produit par le nom du produit\n");
+                   scanf("%d",&choix2);
+                   switch(choix2){
+                   	case 1:
+                   		 {
+                    char nomUtilisateurRecherche[50];
+                    printf("Entrez le nom d'utilisateur pour rechercher les produits : ");
+                    scanf("%s", nomUtilisateurRecherche);
+                    rechercher_produit_par_utilisateur(fichier, nomUtilisateurRecherche);
+                    break;
+                     }
+                    case 2:
+                    printf("Entrez le nom du produit pour rechercher : ");
+                    scanf("%s", nomProduitRecherche);
+                     rechercher_produit_par_nom(fichier, nomProduitRecherche);
+                    	break;
+                    default: printf("Choix invalide. Veuillez reessayer.\n");
+				   }
+                   break;
+                case 6:
+                   printf("1. Trier par le nom \n");
+                   printf("2. Trier par le prix unitaire\n");
+                   scanf("%d",&choix3);
+                   switch(choix3){
+                   	case 1:
+                   		 {
+                    trier_produits_par_nom(fichier, T, &n, &lastId);
+                    printf("Les produits ont ete tries par le nom.\n");
+                    break;
+                     }
+                    case 2:
+                    trier_produits_par_prix_unitaire(fichier, T, &n, &lastId);
+                    printf("Les produits ont ete tries par prix unitaire.\n");
+                    	break;
+                    default: printf("Choix invalide. Veuillez reessayer.\n");
+				   }
+                   break;
+                case 7:
+                    printf("Au revoir !\n");
+                    break;
+                default:
+                    printf("Choix invalide. Veuillez reessayer.\n");
+            }
+        } while (choix != 7);
+
+        SaveProductToFile(fichier, T, n);
+
+        fclose(fichier);
+    } else {
+        printf("Vous n'avez pas les autorisations necessaires pour acceder au systeme.\n");
+    }
+
+    return 0;
+}
